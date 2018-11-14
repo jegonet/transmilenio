@@ -12,6 +12,7 @@ turtles-own [
   cross ;marca si una persona ya logró subir o bajar del bus
   moved ;marca si en el último tick una tortuga logró moverse
   last-heading
+  last-ycor
 ]
 
 to setup
@@ -78,113 +79,73 @@ end
 
 to try-go-in
   ifelse(ycor <= -1) [;no ha entrado al bus
+
+    let turn-right false
+
     if (xcor < -9 or (xcor >= 2 and xcor < 5) or  (xcor >= 10 and xcor < 11)) [; a la izquierda de una puerta
       set heading 45 ;mire hacia el noreste
-      repeat 4 [
-        try-move heading
-        rt 45
-      ]
+      set turn-right true
     ]
     if ((xcor >= -9 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13)) [; frente a una puerta
-      try-move 0 ;trate de moverse hacia el norte
-      try-move 45 ;trate de moverse hacia el norteste
-      try-move 315 ;trate de moverse hacia el noroccidente
-      try-move 90 ;trate de moverse hacia la el oriente
+      set heading 0 ;mire hacia el norte 0
     ]
     if ((xcor > -3 and xcor < 2) or (xcor > 7 and xcor < 10) or xcor > 13) [; a la derecha de una puerta
-        set heading 315 ;mire hacia el noroccidente
-        repeat 4 [
-            try-move heading
-            lt 45
-      ]
+      set heading 315 ;mire hacia el noroccidente
+    ]
+    repeat 8 [
+      try-move heading
+      ifelse(turn-right = true)[rt 45] [lt 45]
     ]
   ][ ;ya se subió al bus
-    if(ycor <= 4)[;solo se corre hacia adelante o atrás del bus, si no está ya en el final del mismo
-      try-move 0;trate de moverse hacia el norte
-      try-move 315;trate de moverse hacia el noroccidente
-      try-move 45;trate de moverse hacia el nororiente
-      try-move 270;trate de moverse hacia el occiendente
-      try-move 90;trate de moverse hacia el oriente
+    set heading 0
+    repeat 8 [
+      try-move heading
+      lt 45
     ]
   ]
 end
 
 to try-go-out
   ifelse(ycor > -1) [;no se ha bajado del bus
+
+    let turn-left false
+
     if (xcor < -9 or (xcor >= 2 and xcor < 5) or  (xcor >= 10 and xcor < 11)) [; a la izquierda de una puerta
       set heading 135 ;mire hacia el noreste
-      repeat 4 [
-        try-move heading
-        lt 45
-      ]
+      set turn-left true
     ]
     if ((xcor >= -9 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13)) [; frente a una puerta
-      try-move 180 ;mire hacia el sur
-      try-move 135 ;mire hacia el suroriente
-      try-move 225 ;mire hacia el suroccidente
-      try-move 90 ;mire hacia la el oriente
+      set heading 180 ;mire hacia el suroccidente
     ]
     if ((xcor > -3 and xcor < 2) or (xcor > 7 and xcor < 10) or xcor > 13) [; a la derecha de una puerta
-        set heading 225 ;mire hacia el suroccidente
-        repeat 4 [
-            try-move heading
-            rt 45
-      ]
+      set heading 225 ;mire hacia el suroccidente
+    ]
+    repeat 8 [
+      try-move heading
+      ifelse(turn-left = true)[lt 45] [rt 45]
     ]
   ][ ;ya se bajo del bus
-    if(ycor > -9) [
-      try-move 180 ;mire hacia el sur
-      try-move 135 ;mire hacia el suroriente
-      try-move 225 ;mire hacia el suroccidente
-      try-move 270 ;mire hacia el occiendente
-      try-move 90 ;mire hacia el oriente
+    set heading 180 ;mire hacia el suroccidente
+    repeat 8 [
+      try-move heading
+      rt 45
     ]
   ]
 end
 
 to stay-inside-away-doors
-  if(ycor < 4)[ ;solo se corre hacia adelante o atrás del bus, si no está ya en el final del mismo
-    try-move 0;trate de moverse hacia el norte
-    try-move 315;trate de moverse hacia el noroccidente
-    try-move 45;trate de moverse hacia el nororiente
-    try-move 270;trate de moverse hacia el occiendente
-    try-move 90;trate de moverse hacia el oriente
+  set heading 0 ;mire hacia el norte
+  repeat 8 [
+    try-move heading
+    rt 45
   ]
 end
 
 to stay-outside-away-doors
-  ifelse(ycor <= -5) [;acercarse a las puertas
-    if (xcor < -9 or (xcor >= 2 and xcor < 5) or  (xcor >= 10 and xcor < 11)) [; a la izquierda de una puerta
-      set heading 45 ;mire hacia el noreste
-      repeat 4 [
-        try-move heading
-        rt 45
-      ]
-    ]
-    if ((xcor >= -9 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13)) [; frente a una puerta
-      try-move 0 ;trate de moverse hacia el norte
-      try-move 45 ;trate de moverse hacia el norteste
-      try-move 315 ;trate de moverse hacia el noroccidente
-      try-move 90 ;trate de moverse hacia la el oriente
-    ]
-    if ((xcor > -3 and xcor < 2) or (xcor > 7 and xcor < 10) or xcor > 13) [; a la derecha de una puerta
-        set heading 315 ;mire hacia el noroccidente
-        repeat 4 [
-            try-move heading
-            lt 45
-      ]
-    ]
-    ifelse( last-heading = 90 )[
-      try-move 270
-    ][
-      try-move 90
-    ]
-  ][; moverse de un lado a otro para dejar pasar
-    ifelse( last-heading = 90 )[
-      try-move 270
-    ][
-      try-move 90
-    ]
+  set heading 0 ;mire hacia el norte
+  repeat 8 [
+    try-move heading
+    rt 45
   ]
 end
 
@@ -200,16 +161,29 @@ to try-move [direction] ;tratar de mover a una persona en una dirección
         fd 1
         let valid-movement true
 
-        if(cross = false)[
-          if ((color = blue or color = white) and ycor > -1)[
+        ifelse(cross = false)[
+          if (color = blue and ycor > -1)[
             if not ((xcor >= -9 and xcor <= -7) or (xcor >= -5 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13))[ ;cruce por lugar que no es la puerta
               set valid-movement false
             ]
           ]
-          if ((color = orange or color = yellow) and ycor <= -1)[
-            if not ((xcor >= -9 and xcor <= -7) or (xcor >= -5 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13))[ ;cruce por lugar que no es la puerta
+          if (color = orange and ycor <= 0)[
+            if not ((xcor >= -9 and xcor < -7) or (xcor >= -5 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13))[ ;cruce por lugar que no es la puerta
               set valid-movement false
             ]
+          ]
+          if (color = yellow and ycor <= 0)[
+            set valid-movement false
+          ]
+          if (color = white and ycor > -1)[
+            set valid-movement false
+          ]
+        ][
+          if ((color = orange or color = yellow) and ycor > -1 and ycor >= last-ycor)[;se devolvió al bus y no está tratando de volver a la estación
+              set valid-movement false
+          ]
+          if ((color = white or color = blue) and ycor <= 0 and ycor <= last-ycor)[;se devolvió a la estación y no está tratando de regresar al bus
+              set valid-movement false
           ]
         ]
         if (ycor > 5)[ ;no se puede salir al otro lado del transmilenio
@@ -220,6 +194,7 @@ to try-move [direction] ;tratar de mover a una persona en una dirección
           set moved true
           cross-control
           set last-heading heading
+          set last-ycor ycor
         ][ ;deshacer el paso dado porque es inválido
           let tpm-ahead heading
           rt 180
@@ -351,8 +326,8 @@ SLIDER
 initial-people-go-in
 initial-people-go-in
 1
-300
-53.0
+180
+49.0
 1
 1
 NIL
@@ -367,7 +342,7 @@ initial-people-go-out
 initial-people-go-out
 1
 180
-33.0
+70.0
 1
 1
 NIL
@@ -382,7 +357,7 @@ percentaje-people-go-in
 percentaje-people-go-in
 0
 100
-48.0
+49.0
 1
 1
 NIL
@@ -397,7 +372,7 @@ percentaje-people-go-out
 percentaje-people-go-out
 0
 100
-47.0
+0.0
 1
 1
 NIL
