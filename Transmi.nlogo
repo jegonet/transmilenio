@@ -208,7 +208,7 @@ to cross-control
       set waiting-for-go-out ( waiting-for-go-out - 1 )
       set cross true
     ]
-    if (color = blue and ycor > -1) [ ;un agente azul logró subir al bus
+    if (color = blue and ycor >= 0) [ ;un agente azul logró subir al bus
       set waiting-for-go-in ( waiting-for-go-in - 1 )
       set cross true
     ]
@@ -311,7 +311,7 @@ initial-people-go-in
 initial-people-go-in
 0
 160
-160.0
+80.0
 1
 1
 NIL
@@ -326,7 +326,7 @@ initial-people-go-out
 initial-people-go-out
 0
 160
-160.0
+80.0
 1
 1
 NIL
@@ -416,33 +416,68 @@ waiting-for-go-out
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model tries to emulate based on simple rules the people behavior to take a bus or to get off the bus in the massive transportation system Transmilenio at Bogotá, Colombia.
+Este modelo trata de emular el comportamiento de las personas para subir o bajar de un bus articulado de Trasmilenio, sistema masivo de transporte en Bogotá, Colombia, utilizando reglas muy simples de movimiento y organización.
 
 ## HOW IT WORKS
 
+El modelo fue desarrollado en un mundo finito de parcelas de 21 de alto * 33 de ancho, simulando en gris la estación de transmilenio, en rojo el bus de transmilenio biarticulado para 160 pasajeros, ubicando allí en color rojo oscuro el lugar de las puertas, cada una con un ancho que permite el tránsito de hasta 3 agentes en simultáneo; en la parte superior se ve una zona verde que representan pastos al otro lado de la estación, donde no debería haber ninguna persona caminando (por lo menos no para el propósito de este modelo:
 
+El modelo incluye 2 tipos de agentes, cada uno con 2 tipos de comportamientos:
 
-(what rules the agents use to create the overall behavior of the model)
+a. Agentes que están en el bus. Algunos de estos agentes quieren bajar de la estación (color naranja), por lo que su comportamiento es primordialmente acercarse a las puertas para lograr salir. En este modelo se propuso que la parte izquierda de las puertas (desde la perspectiva del espectador de la simulación) es exclusiva para la salida de pasajeros, mientras que la parte derecha y central de cada puerta bien puede ser usada tanto para salir como para entrar. Una vez logran bajar del bus, estos agentes se alejan de las puertas para ir hacia los lados de las estaciones.
+
+El segundo comportamiento de los agentes dentro del bus, es el de los agentes que quieren permanecer dentro del bus mismo (color amarillo), porque no tienen la intención de bajar a la estación. Estos agentes con prioridad se mueven para alejarse de las puertas, de tal forma que permitan el tránsito de las personas que desean subir o bajar del bus.
+
+b. El segundo y último tipo de agente modelado, es el agente que está en la estación, este tiene dos tipos de comportamientos, dependiendo de si desea subir o no al bus.
+
+En color azul se modelan los agentes que desean subir al bus, de esta forma, estos se mueven primordialmente hacia las puertas para lograr subir al bus. Una vez logran subir al bus, se mueven hacia los costados del bus, de tal forma que se alejan de las puertas permitiendo el tránsito de las personas. 
+
+En color blanco se modelan los agentes que no desean subir al bus, estos agentes se mueven hacia el bus y luego hacia los lados permitiendo que las personas puedan subir o bajar del bus. Por su comportamiento, tienden a generar bloqueo para las personas que quieren subir o bajar del bus. 
+
+Aunque en el comportamiento de cada agente, claramente hay una “prioridad” en la dirección de sus movimientos, fue necesario permitir que cada agente pudiera moverse en ciertos momentos, en dirección contraria a su objetivo, esto con el fin de dar la capacidad de salir de espacios cerrados u ocupados por otros agentes, con una cierta libertad, como lo haría una persona común al ver que no hay espacio para salir (tendría que buscar otro espacio).
+
+Por otra parte, se programaron algunas reglas adicionales:
+
+- Todo agente para subir o bajar del bus (cruzar), debía hacerlo usando exclusivamente el espacio de las puertas del mismo.
+
+- Ningún agente podía moverse a una ubicación ya ocupada por otro agente.
+
+- Una agente naranja que lograra salir del bus (cumplir su objetivo), no podía moverse regresando al bus.
+
+- Un agente azul que lograra subir al bus (cumplir su objetivo), no podía salir del mismo y regresar a la estación.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+El botón Setup permite inicializar el modelo, mientras que el botón Run permite correr el modelo mismo.
+
+El slider initial-people-go-in permite seleccionar la cantidad de pasajeros en la estación que podrían subir al bus. Una cantidad entre 0 y 160. Con el slider percentaje-people-go-in se establece el porcentaje (de 0 a 100) de las personas de la estación que realmente desean subir al bus mismo. 
+
+El slider initial-people-go-out permite seleccionar la cantidad de pasajeros dentro del bus que podrían bajar del mismo. Una cantidad entre 0 y 160. Con el slider percentaje-people-go-out se establece el porcentaje (de 0 a 100) de las personas dentro del bus que realmente desean bajar del mismo. 
+
+Los monitores permiten ver la cantidad de personas que faltan por subir o bajar del bus respectivamente, mientras que la gráfica permite ver los cambios de estas variables en cada tick de una manera comparativa, donde la línea azul representa la cantidad de personas que faltan por subir al bus, mientras la línea naranja representa la cantidad de personas que faltan por bajar del mismo.
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+Considerar que un bus de Transmilenio soporta un máximo teórico de 160 pasajeros, por lo que tratar de mantener una cantidad de personas superior dentro del bus implicará que no converja.
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Casos extremos:
+
+- Slider de initial-people-go-out en 160 y percentaje-people-go-out en 100, mientras que el slider de initial-people-go-in está en 160 y percentaje-people-go-in en 100. Comparar con los tiempos de la configuración initial-people-go-out en 160 y percentaje-people-go-out en 50, mientras que el slider de initial-people-go-in está en 160 y percentaje-people-go-in en 50. Aunque involucra la misma cantidad de personas, si las personas que no se van a subir o bajar, no están obstaculizando las puertas, el flujo de entrada y salida es muy bueno.
+
+- Comparar los tiempos de la configuración: Slider de initial-people-go-out en 160 y percentaje-people-go-out en 100, mientras que el slider de initial-people-go-in está en 0. Comparar con initial-people-go-out en 0, mientras que el slider de initial-people-go-in está en 160 y percentaje-people-go-in en 100. Dado que se está dando prioridad a la salida, y que el área del bus es más reducida que el de la estación, las personas bajan más rápido de lo que suben.
+
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+Integrar la capacidad de enviar mensajes de un agente a otro (de una persona a otra[s]), simulando el comportamiento de solicitar permiso para poder pasar.
 
 ## NETLOGO FEATURES
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+Se usaron las características comunes de NetLogo. 
+
+Sin embargo, sería provechoso poder ubicar de una manera mucho más sencilla a todos los agentes en diferentes parcelas, sin que se sobrepusieran al crearlos de manera aleatoria. Aunque hay una instrucción que lo permite, hace que el agente se desplace a cualquier parte del mundo, sin embargo, se requería poder definir una parte del mundo para mover al agente, por lo que no se pudo utilizar dicha instrucción.
 
 ## RELATED MODELS
 
@@ -454,12 +489,12 @@ Traffic 2 Lanes": a more sophisticated two-lane version of the "Traffic Basic" m
 
 ## CREDITS AND REFERENCES
 
-Authors:
+Autores:
 Jorge Eliécer Gantiva Ochoa - jgantiva@unbosque.edu.co
 Andrés Felipe Rodriguez Casteñada - aferodriguez@unbosque.edu.co
 Johana Andrea Castellanos Fonseca - castellanosf@unbosque.edu.co
 
-Advisor:
+Profesor:
 Orlando López Cruz - orlandolopez@unbosque.edu.co
 @#$#@#$#@
 default
