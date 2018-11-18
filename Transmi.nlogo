@@ -1,54 +1,69 @@
+;Variables globales
 globals [
-  waiting-for-go-in
-  waiting-for-go-out
+  waiting-for-go-in ;variable de cantidad de agentes pendientes de subir al bus
+  waiting-for-go-out ; variable de cantidad de personas pendientes de bajar del bus
 
-  no-goin-people
-  no-goout-people
+  no-goin-people ;variable de cantidad de personas en la estación que no subirán al bus
+  no-goout-people ;variable de cantidad de personas en el bus que no bajarán en la estación
+  must-stop ;variable que indica si el modelo debe parar (porque ya convergió)
 ]
-breed [ people-in person-in ]
-breed [ people-out person-out ]
 
+;
+breed [ people-in person-in ] ;personas que van a subir a un bus
+breed [ people-out person-out ] ;personas que van a bajar de un bus
+
+;Variables o propiedades de los agentes
 turtles-own [
-  cross ;marca si una persona ya logró subir o bajar del bus
-  moved ;marca si en el último tick una tortuga logró moverse
-  last-heading
-  last-ycor
+  cross ;booleano que marca si una persona ya logró subir o bajar del bus
+  moved ;booleano que marca si en el último tick una tortuga logró moverse
+  last-heading ;entero que define la última dirección del agente
+  last-ycor ; entero que marca la última posición conocida en el eje Y del agente
 ]
 
+;Método de configuración inicial
 to setup
   clear-all
-  draw-patches
+  draw-patches ;Dibuja las parcelas para simular una estación de transmilenio y un bus
 
+  ;cálculos de las personas que van a subir del bus, según los controles de configuración de parámetros del modelo
   set waiting-for-go-in ( initial-people-go-in * percentaje-people-go-in / 100 )
   set waiting-for-go-in (round waiting-for-go-in)
   set no-goin-people ( initial-people-go-in - waiting-for-go-in )
 
+  ;crea agentes en la estación que no subirán al bus
   create-people-in no-goin-people
   [
     set color white
-    setxy random-xcor random-tween-inclusive -1 -10
+    setxy random-xcor random-tween-inclusive -2 -10
   ]
+
+  ;crea agentes en la estación que sí subirán al bus
   create-people-in waiting-for-go-in
   [
     set color blue
-    setxy random-xcor random-tween-inclusive -1 -10
+    setxy random-xcor random-tween-inclusive -2 -10
   ]
 
+  ;cálculos de las personas que van a bajar del bus, según los controles de configuración de parámetros del modelo
   set waiting-for-go-out ( initial-people-go-out * percentaje-people-go-out / 100 )
   set waiting-for-go-out (round waiting-for-go-out)
   set no-goout-people ( initial-people-go-out - waiting-for-go-out)
 
+  ;crea agentes en el bus que sí bajarán del mismo
   create-people-out waiting-for-go-out
   [
     set color orange
-    setxy random-xcor random-tween-inclusive 5 -1
+    setxy random-xcor random-tween-inclusive 5 0
   ]
+
+  ;crea agentes en el bus que no bajarán del mismo
   create-people-out no-goout-people
   [
     set color yellow
-    setxy random-xcor random-tween-inclusive 5 -1
+    setxy random-xcor random-tween-inclusive 5 0
   ]
 
+  ;configura los parámetros generales para todos los agentes
   ask turtles [
     set shape  "person"
     set size 1
@@ -56,104 +71,83 @@ to setup
     set last-heading 90
   ]
 
+  ;setea variable por defecto para que el modelo pueda correr
+  set must-stop false
   reset-ticks
 end
 
 to go
-  ask turtles [
-    set moved false
-  ]
-  ask turtles with [ color = white ] [ ;personas en la estación que no se van a subir
-    stay-outside-away-doors
-  ]
-  ask turtles with [ color = blue ] [ ;personas en la estación que sí se van a subir
-    try-go-in
-  ]
-  ask turtles with [ color = yellow ] [ ;personas en el bus que no se van a bajar
-    stay-inside-away-doors
-  ]
-  ask turtles with [ color = orange ] [ ;personas en el bus que sí se van a bajar
-    try-go-out
+  if(must-stop = false)[ ; valida que el modelo no haya convergido aún para continuar movimientos
+    ask turtles [
+      set moved false
+    ]
+    ask turtles with [ color = white ] [ ;personas en la estación que no se van a subir
+      stay-outside-away-doors ; moverse pero mantenerse alejado de las puertas para permitir el tránsito de personas
+    ]
+    ask turtles with [ color = blue ] [ ;personas en la estación que sí se van a subir
+      try-go-in ; moverse con prioridad hacia dentro del bus
+    ]
+    ask turtles with [ color = yellow ] [ ;personas en el bus que no se van a bajar
+      stay-inside-away-doors ; moverse pero mantenerse alejado de las puertas para permitir el tránsito de personas
+    ]
+    ask turtles with [ color = orange ] [ ;personas en el bus que sí se van a bajar
+      try-go-out ; moverse con prioridad hacia fuera del bus
+    ]
+    tick
   ]
 end
 
+; moverse con prioridad hacia dentro del bus
 to try-go-in
   ifelse(ycor <= -1) [;no ha entrado al bus
 
-    let turn-right false
-
-    if (xcor < -9 or (xcor >= 2 and xcor < 5) or  (xcor >= 10 and xcor < 11)) [; a la izquierda de una puerta
-      set heading 45 ;mire hacia el noreste
-      set turn-right true
+    if (xcor < -5 or (xcor >= 2 and xcor < 6) or  (xcor >= 10 and xcor < 12)) [; a la izquierda de una puerta
+      foreach [45 90 135 0 315  225 180 270] try-move ;moverse con prioridad hacia adelante y la derecha
     ]
-    if ((xcor >= -9 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13)) [; frente a una puerta
-      set heading 0 ;mire hacia el norte 0
+    if ((xcor >= -5 and xcor <= -3) or (xcor >= 6 and xcor <= 7) or (xcor >= 12 and xcor <= 13)) [; frente a una puerta
+      foreach [0 45 315 90 270 135 225 180] try-move ;moverse con prioridad hacia adelante
     ]
-    if ((xcor > -3 and xcor < 2) or (xcor > 7 and xcor < 10) or xcor > 13) [; a la derecha de una puerta
-      set heading 315 ;mire hacia el noroccidente
-    ]
-    repeat 8 [
-      try-move heading
-      ifelse(turn-right = true)[rt 45] [lt 45]
+    if ((xcor > -3 and xcor < 2) or (xcor > 7 and xcor < 10) or xcor > 13) [ ; a la derecha de la puerta
+      foreach [315 270 0 225 45 90 180 135] try-move ;moverse con prioridad hacia adelante y la izquierda
     ]
   ][ ;ya se subió al bus
-    set heading 0
-    repeat 8 [
-      try-move heading
-      lt 45
-    ]
+    foreach [0 90 270 45 315 135 225 180] try-move ;moverse con prioridad hacia adelante y hacia los lados del bus
   ]
 end
 
+; moverse con prioridad hacia fuera del bus
 to try-go-out
   ifelse(ycor > -1) [;no se ha bajado del bus
-
-    let turn-left false
-
     if (xcor < -9 or (xcor >= 2 and xcor < 5) or  (xcor >= 10 and xcor < 11)) [; a la izquierda de una puerta
-      set heading 135 ;mire hacia el noreste
-      set turn-left true
+      foreach [135 180 90 45 0 225 270 315] try-move ;moverse con prioridad hacia el sur y la derecha
     ]
     if ((xcor >= -9 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13)) [; frente a una puerta
-      set heading 180 ;mire hacia el suroccidente
+      foreach [180 225 135 270 90 315 45 0] try-move ;moverse con prioridad hacia el sur
     ]
     if ((xcor > -3 and xcor < 2) or (xcor > 7 and xcor < 10) or xcor > 13) [; a la derecha de una puerta
-      set heading 225 ;mire hacia el suroccidente
-    ]
-    repeat 8 [
-      try-move heading
-      ifelse(turn-left = true)[lt 45] [rt 45]
+      foreach [225 180 135 270 90 315 0 45] try-move ;moverse con prioridad hacia el sur y la izquierda
     ]
   ][ ;ya se bajo del bus
-    set heading 180 ;mire hacia el suroccidente
-    repeat 8 [
-      try-move heading
-      rt 45
-    ]
+    foreach [180 225 135 270 90 315 45 0] try-move ;moverse con prioridad hacia el sur y hacia los lados
   ]
 end
 
+; moverse dentro del bus pero mantenerse alejado de las puertas para permitir el tránsito de personas
 to stay-inside-away-doors
-  set heading 0 ;mire hacia el norte
-  repeat 8 [
-    try-move heading
-    rt 45
-  ]
+  foreach [0 315 45 270 90 225 135 180] try-move ;moverse con prioridad hacia el norte y hacia los lados del bus
 end
 
+; moverse en la estación pero mantenerse alejado de las puertas para permitir el tránsito de personas
 to stay-outside-away-doors
-  set heading 0 ;mire hacia el norte
-  repeat 8 [
-    try-move heading
-    rt 45
-  ]
+  foreach [180 135 225 90 270 45 315 0] try-move ;moverse con prioridad hacia el sur y hacia los lados
 end
 
-to try-move [direction] ;tratar de mover a una persona en una dirección
+;función de movimiento general de agentes hacia una dirección, aplicando restricciones
+to try-move [direction]
 
-  set heading direction
+  set heading direction ;ubica el agente hacia la dirección indicada para dar un paso
 
-  if(moved = false)[
+  if(moved = false)[ ; valida que el agente en el último tick no se haya movido
     let ahead patch-set patch-ahead 1
     if (any? ahead) [ ;valida que haya lugar para moverse en el mundo
       if not any? turtles-on patch-ahead 1 [  ;valida que no hayan otras personas en el espacio en frente
@@ -161,9 +155,10 @@ to try-move [direction] ;tratar de mover a una persona en una dirección
         fd 1
         let valid-movement true
 
+        ;inicia algoritmo de detección de posibles movimientos inválidos (no posibles) de los autómatas
         ifelse(cross = false)[
           if (color = blue and ycor > -1)[
-            if not ((xcor >= -9 and xcor <= -7) or (xcor >= -5 and xcor <= -3) or (xcor >= 5 and xcor <= 7) or (xcor >= 11 and xcor <= 13))[ ;cruce por lugar que no es la puerta
+            if not ((xcor >= -7 and xcor <= -7) or (xcor >= -5 and xcor <= -3) or (xcor >= 6 and xcor <= 7) or (xcor >= 12 and xcor <= 13))[ ;cruce por lugar que no es la puerta
               set valid-movement false
             ]
           ]
@@ -172,10 +167,10 @@ to try-move [direction] ;tratar de mover a una persona en una dirección
               set valid-movement false
             ]
           ]
-          if (color = yellow and ycor <= 0)[
+          if (color = yellow and ycor <= 0)[;no debería salirse del bus un pasajero que no quiere bajarse
             set valid-movement false
           ]
-          if (color = white and ycor > -1)[
+          if (color = white and ycor > -1)[;no debería subirse al bus un pasajero al que no le sirve el mismo
             set valid-movement false
           ]
         ][
@@ -186,16 +181,16 @@ to try-move [direction] ;tratar de mover a una persona en una dirección
               set valid-movement false
           ]
         ]
-        if (ycor > 5)[ ;no se puede salir al otro lado del transmilenio
+        if (ycor > 5)[ ;no se puede salir al otro lado del transmilenio, es una zona verde fuera de la estación
           set valid-movement false
         ]
 
         ifelse (valid-movement = true)[ ;movimiento válido, continuar y verificar estadísticas
           set moved true
           cross-control
-          set last-heading heading
-          set last-ycor ycor
-        ][ ;deshacer el paso dado porque es inválido
+          set last-heading heading ;almacenando última dirección
+          set last-ycor ycor ;almacenando última coordenada en el eje Y para validar movimientos con respecto al pasado
+        ][ ;deshacer pasos inválidos
           let tpm-ahead heading
           rt 180
           fd 1
@@ -206,47 +201,51 @@ to try-move [direction] ;tratar de mover a una persona en una dirección
   ]
 end
 
+;función que valida si un agente cruzó hacia su objetivo para cambiar comportamiento
 to cross-control
   if (cross = false) [
-    if (color = orange and ycor <= -1) [
+    if (color = orange and ycor <= -1) [ ;un agente naranja logró bajar del bus
       set waiting-for-go-out ( waiting-for-go-out - 1 )
       set cross true
     ]
-    if (color = blue and ycor > -1) [
+    if (color = blue and ycor > -1) [ ;un agente azul logró subir al bus
       set waiting-for-go-in ( waiting-for-go-in - 1 )
       set cross true
     ]
   ]
 
+  ;si ya se subieron y bajaron todos los agentes, entonces detener el modelo
   if (waiting-for-go-out <= 0 and waiting-for-go-in <= 0) [
-    stop
+    set must-stop true
   ]
 end
 
+;función de colores sobre las parcelas del mundo, para el bus, la estación, las puertas y la zona verde
 to draw-patches
   ask patches [
-    set pcolor green - 0.5
+    set pcolor green - 0.5 ;zona verde al otro lado de la estación de transmilenio
   ]
   ask patches with [ pycor <= 5 ] [
-    set pcolor red - 1
+    set pcolor red - 1 ;bus de transmilenio
   ]
   ask patches with [  pycor = 0 and  ( ( pxcor >= -9 and pxcor <= -7 ) or ( pxcor >= -5 and pxcor <= -3 ) or ( pxcor >= 5 and pxcor <= 7 ) or ( pxcor >= 11 and pxcor <= 13 )  ) ] [
-      set pcolor red - 2.5
+      set pcolor red - 2.5 ;puertas del bus de transmilenio
   ]
   ask patches with [ pycor <= -1 ] [
-    set pcolor grey - 1
+    set pcolor grey - 1 ;estimación de transmilenio
   ]
 end
 
+;función utilitaria para generar números aleatorios dentro de un rango determinado
 to-report random-tween-inclusive [ a b ]
     report a + random (b - a)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-208
-10
-619
-292
+213
+12
+624
+294
 -1
 -1
 13.0
@@ -305,103 +304,70 @@ NIL
 
 SLIDER
 11
-83
-195
-116
-initial-num-in-rows
-initial-num-in-rows
-0
-2
-0.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-11
-129
+57
 194
-162
+90
 initial-people-go-in
 initial-people-go-in
-1
-180
-49.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-11
-216
-195
-249
-initial-people-go-out
-initial-people-go-out
-1
-180
-70.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-11
-173
-195
-206
-percentaje-people-go-in
-percentaje-people-go-in
 0
-100
-49.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-10
-259
-196
-292
-percentaje-people-go-out
-percentaje-people-go-out
-0
-100
-0.0
-1
-1
-NIL
-HORIZONTAL
-
-PLOT
-629
-10
-829
 160
-People waiting for go in
+160.0
+1
+1
 NIL
+HORIZONTAL
+
+SLIDER
+11
+144
+195
+177
+initial-people-go-out
+initial-people-go-out
+0
+160
+160.0
+1
+1
 NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot waiting-for-go-in"
+HORIZONTAL
+
+SLIDER
+11
+101
+195
+134
+percentaje-people-go-in
+percentaje-people-go-in
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+187
+196
+220
+percentaje-people-go-out
+percentaje-people-go-out
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
 
 PLOT
-629
-170
-829
-320
-People waiting for go out
+635
+77
+874
+227
+People waiting to go into or go out
 NIL
 NIL
 0.0
@@ -412,14 +378,49 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot waiting-for-go-out"
+"default" 1.0 0 -13345367 true "" "plot waiting-for-go-in"
+"pen-1" 1.0 0 -955883 true "" "plot waiting-for-go-out"
+
+TEXTBOX
+646
+237
+860
+293
+-Blue line, people waiting for going into the bus.\n-Orange line, people waiting for getting out the bus.
+11
+0.0
+1
+
+MONITOR
+635
+12
+740
+57
+NIL
+waiting-for-go-in
+17
+1
+11
+
+MONITOR
+759
+12
+873
+57
+NIL
+waiting-for-go-out
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This model tries to emulate based on simple rules the people behavior to take a bus or to get off the bus in the massive transportation system Transmilenio at Bogotá, Colombia.
 
 ## HOW IT WORKS
+
+
 
 (what rules the agents use to create the overall behavior of the model)
 
@@ -445,11 +446,21 @@ PENS
 
 ## RELATED MODELS
 
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+"Traffic Basic": a simple model of the movement of cars on a highway.
+
+Traffic 2 Lanes": a more sophisticated two-lane version of the "Traffic Basic" model.
+
+"Traffic Intersection": a model of cars traveling through a single intersection.
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Authors:
+Jorge Eliécer Gantiva Ochoa - jgantiva@unbosque.edu.co
+Andrés Felipe Rodriguez Casteñada - aferodriguez@unbosque.edu.co
+Johana Andrea Castellanos Fonseca - castellanosf@unbosque.edu.co
+
+Advisor:
+Orlando López Cruz - orlandolopez@unbosque.edu.co
 @#$#@#$#@
 default
 true
